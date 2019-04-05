@@ -9,6 +9,7 @@ use std::io::Write;
 #[allow (dead_code)]
 
 fn main() {
+    println!("VIRKER LORTET?");
     let args: Vec<String> = std::env::args().collect();
     if args.len() != 5 {
         writeln!(std::io::stderr(), "Usage: lorenz FILE rho sigma beta").unwrap();
