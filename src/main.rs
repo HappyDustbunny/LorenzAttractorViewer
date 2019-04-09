@@ -9,7 +9,6 @@ use std::io::Write;
 #[allow (dead_code)]
 
 fn main() {
-    println!("VIRKER LORTET?");
     let args: Vec<String> = std::env::args().collect();
     if args.len() != 5 {
         writeln!(std::io::stderr(), "Usage: lorenz FILE rho sigma beta").unwrap();
@@ -22,14 +21,20 @@ fn main() {
     let pic_size = (500 as usize, 500 as usize);
     let number_of_points = 50000 as usize; // Number of points being calculated
     println!("You are using rho = {}, sigma = {} and beta = {} ", rho, sigma, beta);
+
+    // Camera settings
+    let az = 60.; // Azimut: angle from x-axis arround z-axis -180 to 180
+    let dec = 30.; // Declination: angle determining heigth above xy-plane -90 to 90
+    let dist = 40.; // Distance of camera from (0, 0, 0)
     let mut l_a_points = Vec::new();
     // let mut pixels = vec![0; pic_size.0 * pic_size.1];
 
     l_a_points = lorenz(*rho, *sigma, *beta, number_of_points);
 
-    let pixels = coor_to_pixels(l_a_points, number_of_points, pic_size);
+    // let pixels = coor_to_pixels(l_a_points, number_of_points, pic_size);
+    let pixels = camera(l_a_points, az, dec, dist);
 
-    write_image(&args[1], &pixels, pic_size).expect("Error writing PNG file");
+    // write_image(&args[1], &pixels, pic_size).expect("Error writing PNG file");
 }
 
 fn lorenz(rho: f64, sigma: f64, beta: f64, number_of_points: usize) -> Vec<(f64, f64, f64)>{
@@ -53,7 +58,24 @@ fn lorenz(rho: f64, sigma: f64, beta: f64, number_of_points: usize) -> Vec<(f64,
     l_a_points
 }
 
+fn camera(l_a_points: Vec<(f64, f64, f64)>, az: f64, dec: f64, dist: f64) -> std::vec::Vec<(f64, f64, f64)> {
+    let pi = 3.1415926536;
+    let eyepoint = (dist*(dec*pi/180.).cos()*(az*pi/180.).cos(),
+                    dist*(dec*pi/180.).cos()*(az*pi/180.).sin(),
+                    dist*(dec*pi/180.).sin());
+    println!("Eye point at {} {}  {}", eyepoint.0, eyepoint.1, eyepoint.2);
+    let vect = crosp((1., 0., 0.), (0., 1., 0.));
+    println!("{}", vect);
+    l_a_points
+}
+
+fn crossp(vec1: Vec<(f64, f64, f64)>, vec2: Vec<(f64, f64, f64)>) -> Vec<(f64, f64, f64)> {
+    let res_vec = (vec1[1]*vec2[2] - vec2[1]*vec1[2], vec1[3]*vec2[0] - vec2[2]*vec1[0], vec1[0]*vec2[1] - vec2[0]*vec1[1]);
+    res_vec
+}
+
 fn coor_to_pixels(l_a_points: Vec<(f64, f64, f64)>, number_of_points: usize, pic_size: (usize, usize)) -> Vec<u8> {
+    // Project points on the xy-plane
     let mut pixels = vec![255; pic_size.0 * pic_size.1];  // Initialize the array holding the pixels. 255 is black 0 i white
     let x_min = -20.;
     let x_max = 20.;
