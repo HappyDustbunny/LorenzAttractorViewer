@@ -21,9 +21,7 @@ fn main() {
     let pic_size = (500 as usize, 500 as usize);
     let number_of_points = 50000 as usize; // Number of points being calculated
     println!("You are using rho = {}, sigma = {} and beta = {} ", rho, sigma, beta);
-<<<<<<< HEAD
     let l_a_points = lorenz(*rho, *sigma, *beta, number_of_points);
-=======
 
     // Camera settings
     let az = 60.; // Azimut: angle from x-axis arround z-axis -180 to 180
@@ -33,7 +31,6 @@ fn main() {
     // let mut pixels = vec![0; pic_size.0 * pic_size.1];
 
     l_a_points = lorenz(*rho, *sigma, *beta, number_of_points);
->>>>>>> ff6ec8bc8b8396bf21d953c5b6697d82f73418a3
 
     // let pixels = coor_to_pixels(l_a_points, number_of_points, pic_size);
     let pixels = camera(l_a_points, az, dec, dist);
@@ -64,18 +61,74 @@ fn lorenz(rho: f64, sigma: f64, beta: f64, number_of_points: usize) -> Vec<(f64,
 
 fn camera(l_a_points: Vec<(f64, f64, f64)>, az: f64, dec: f64, dist: f64) -> std::vec::Vec<(f64, f64, f64)> {
     let pi = 3.1415926536;
+    let dist_eye_canvas = 0.33;
     let eyepoint = (dist*(dec*pi/180.).cos()*(az*pi/180.).cos(),
                     dist*(dec*pi/180.).cos()*(az*pi/180.).sin(),
                     dist*(dec*pi/180.).sin());
+    let to_origo = mult_scalar(-1., eyepoint);
     println!("Eye point at {} {}  {}", eyepoint.0, eyepoint.1, eyepoint.2);
-    let vect = crosp((1., 0., 0.), (0., 1., 0.));
-    println!("{}", vect);
+    let canvas_x_axis = norm_vec((-eyepoint.1, eyepoint.0, 0.));
+    let canvas_y_axis = crossp(canvas_x, norm_vec(to_origo));
+    let canvas_origo = add_vec(add_vec(mult_scalar((1. - dist_eye_canvas), eyepoint),
+                                       mult_scalar(-0.5*len_vec(eyepoint), canvas_x)),
+                                       mult_scalar(-0.5*len_vec(eyepoint), canvas_y));
+
+    for n in 0..(l_a_points.len()) {
+        point = l_a_points[n];
+        eye_to_point = ab_vec(eyepoint, point);
+        let canvas_x = distace(point, eye_to_point, canvas_origo, canvas_x_axis);
+        let canvas_y = distace(point, eye_to_point, canvas_origo, canvas_y_axis);
+
+    }
+    println!("Canvas origo {} {} {}", canvas_origo.0, canvas_origo.1, canvas_origo.2);
     l_a_points
 }
 
-fn crossp(vec1: Vec<(f64, f64, f64)>, vec2: Vec<(f64, f64, f64)>) -> Vec<(f64, f64, f64)> {
-    let res_vec = (vec1[1]*vec2[2] - vec2[1]*vec1[2], vec1[3]*vec2[0] - vec2[2]*vec1[0], vec1[0]*vec2[1] - vec2[0]*vec1[1]);
+fn distace(point1: (f64, f64, f64), vec1: (f64, f64, f64), point2: (f64, f64, f64), vec2: (f64, f64, f64)) -> (f64, f64, f64) {
+    // Return the distance between the line defined by point1 and vec1 and the line defined by point2 and vec2
+    let n_vec = crossp(vec1, vec2);
+    let distace = dotp(n_vec, ab_vec(point1, point2))/len_vec(n_vec);
+    distace
+}
+
+
+fn crossp(vec1: (f64, f64, f64), vec2: (f64, f64, f64)) -> (f64, f64, f64) {
+    let res_vec = (vec1.1*vec2.2 - vec2.1*vec1.2, vec1.2*vec2.0 - vec2.2*vec1.0, vec1.0*vec2.1 - vec2.0*vec1.1);
     res_vec
+}
+
+fn dotp(vec1: (f64, f64, f64), vec2: (f64, f64, f64)) -> f64 {
+    let dotp = vec1.0*vec2.0 + vec1.1*vec2.1 + vec1.2*vec2.2;
+    dotp
+}
+
+fn add_vec(vec1: (f64, f64, f64), vec2: (f64, f64, f64)) -> (f64, f64, f64) {
+    let res_vec = (vec1.0 + vec2.0, vec1.1 + vec2.1, vec1.2 + vec2.2);
+    res_vec
+}
+
+fn ab_vec(vec_a: (f64, f64, f64), vec_b: (f64, f64, f64)) -> (f64, f64, f64) {
+    // Vector from point A to point B
+    let vec_res = (vec_b.0 - vec_a.0, vec_b.1 - vec_a.1, vec_b.2 - vec_a.2);
+    vec_res
+}
+
+fn mult_scalar(scalar: f64, vec: (f64, f64, f64)) -> (f64, f64, f64) {
+    // Multiplies vector vec with a scalar
+    let vec_res = (scalar*vec.0, scalar*vec.1, scalar*vec.2);
+    vec_res
+}
+
+fn len_vec(vec: (f64, f64, f64)) -> f64 {
+    // Return length of a vector
+    let len_vec = (vec.0*vec.0 + vec.1*vec.1 + vec.2*vec.2).sqrt();
+    len_vec
+}
+
+fn norm_vec(vec: (f64, f64, f64)) -> (f64, f64, f64) {
+    // Return vector of length 1
+    let vec_res = mult_scalar(1./len_vec(vec), vec);
+    vec_res
 }
 
 fn coor_to_pixels(l_a_points: Vec<(f64, f64, f64)>, number_of_points: usize, pic_size: (usize, usize)) -> Vec<u8> {
