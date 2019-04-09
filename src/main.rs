@@ -9,7 +9,6 @@ use std::io::Write;
 #[allow (dead_code)]
 
 fn main() {
-    println!("VIRKER LORTET?");
     let args: Vec<String> = std::env::args().collect();
     if args.len() != 5 {
         writeln!(std::io::stderr(), "Usage: lorenz FILE rho sigma beta").unwrap();
@@ -22,10 +21,7 @@ fn main() {
     let pic_size = (500 as usize, 500 as usize);
     let number_of_points = 50000 as usize; // Number of points being calculated
     println!("You are using rho = {}, sigma = {} and beta = {} ", rho, sigma, beta);
-    let mut l_a_points = Vec::new();
-    // let mut pixels = vec![0; pic_size.0 * pic_size.1];
-
-    l_a_points = lorenz(*rho, *sigma, *beta, number_of_points);
+    let l_a_points = lorenz(*rho, *sigma, *beta, number_of_points);
 
     let pixels = coor_to_pixels(l_a_points, number_of_points, pic_size);
 
@@ -39,7 +35,7 @@ fn lorenz(rho: f64, sigma: f64, beta: f64, number_of_points: usize) -> Vec<(f64,
     let mut y0 = 1.0;
     let mut z0 = 1.0;
     let t = 0.01;
-    for _n in 0..number_of_points {
+    for _ in 0..number_of_points {
         let x = x0 + sigma * (y0 - x0) * t;
         let y = y0 + (x0 * (rho - z0) - y0) * t;
         let z = z0 + (x0 * y0 - beta * z0) * t;
