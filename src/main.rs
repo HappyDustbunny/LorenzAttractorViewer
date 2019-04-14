@@ -1,6 +1,6 @@
 extern crate image;
 
-use std::str::FromStr;
+// use std::str::FromStr;
 use image::ColorType;
 use image::png::PNGEncoder;
 use std::fs::File;
@@ -15,27 +15,47 @@ fn main() {
         writeln!(std::io::stderr(), "Example: {} lorenz.png 28 10 2.667", args[0]).unwrap();
         std::process::exit(1);
     }
-    let rho = &args[2].parse().unwrap();
+    let rho  = &args[2].parse().unwrap();
     let sigma = &args[3].parse().unwrap();
     let beta = &args[4].parse().unwrap();
     let pic_size = (500 as usize, 500 as usize);
     let number_of_points = 50000 as usize; // Number of points being calculated
     println!("You are using rho = {}, sigma = {} and beta = {} ", rho, sigma, beta);
-    let l_a_points = lorenz(*rho, *sigma, *beta, number_of_points);
+    // let l_a_points = lorenz(*rho, *sigma, *beta, number_of_points);
 
     // Camera settings
-    let az = 60.; // Azimut: angle from x-axis arround z-axis -180 to 180
-    let dec = 30.; // Declination: angle determining heigth above xy-plane -90 to 90
-    let dist = 40.; // Distance of camera from (0, 0, 0)
-    let mut l_a_points = Vec::new();
-    // let mut pixels = vec![0; pic_size.0 * pic_size.1];
+    let az = 10.; // Azimut: angle from x-axis arround z-axis -180 to 180
+    let dec = 0.; // Declination: angle determining heigth above xy-plane -90 to 90
+    let dist = 100.; // Distance of camera from (0, 0, 0)
+    
+    let l_a_points = lorenz(*rho, *sigma, *beta, number_of_points);
+    // let mut l_a_points = Vec::new();
+    // let l_a_points = test_picture(*rho, *sigma, *beta, l_a_points);
 
-    l_a_points = lorenz(*rho, *sigma, *beta, number_of_points);
+    let canvas_points = camera(l_a_points, az, dec, dist);
 
-    // let pixels = coor_to_pixels(l_a_points, number_of_points, pic_size);
-    let pixels = camera(l_a_points, az, dec, dist);
+    let pixels = coor_to_pixels(canvas_points, pic_size);
 
-    // write_image(&args[1], &pixels, pic_size).expect("Error writing PNG file");
+    write_image(&args[1], &pixels, pic_size).expect("Error writing PNG file");
+}
+
+fn test_picture(rho: f64, sigma: f64, beta: f64, mut l_a_points: Vec<(f64, f64, f64)>) -> Vec<(f64, f64, f64)> {
+    // let mut l_a_points = Vec::new();
+    l_a_points.push((rho, sigma, beta));
+    // for x in (-20..21).step_by(10) {
+        // for y in (-20..21).step_by(10) {
+        //     for z in (-20..21).step_by(10) {
+                // l_a_points.push((x as f64, y as f64, z as f64));
+                let mut t: f64 = 0.;
+                for _n in 0..2500 {
+                    t += 0.017;
+                    let y = t*t.cos();
+                    let z = t*t.sin();
+                l_a_points.push((0., y as f64, z as f64));
+            }
+        // }
+    // }
+    l_a_points
 }
 
 fn lorenz(rho: f64, sigma: f64, beta: f64, number_of_points: usize) -> Vec<(f64, f64, f64)>{
@@ -50,7 +70,7 @@ fn lorenz(rho: f64, sigma: f64, beta: f64, number_of_points: usize) -> Vec<(f64,
         let y = y0 + (x0 * (rho - z0) - y0) * t;
         let z = z0 + (x0 * y0 - beta * z0) * t;
         // println!("x{} y{} z{}", x, y, z);
-        l_a_points.push((x as f64, y as f64, z as f64));
+        l_a_points.push((x as f64, y as f64, -z as f64));
 
         x0 = x;
         y0 = y;
@@ -59,36 +79,79 @@ fn lorenz(rho: f64, sigma: f64, beta: f64, number_of_points: usize) -> Vec<(f64,
     l_a_points
 }
 
-fn camera(l_a_points: Vec<(f64, f64, f64)>, az: f64, dec: f64, dist: f64) -> std::vec::Vec<(f64, f64, f64)> {
+fn camera(l_a_points: Vec<(f64, f64, f64)>, az: f64, dec: f64, dist: f64) -> std::vec::Vec<(f64, f64)> {
     let pi = 3.1415926536;
-    let dist_eye_canvas = 0.33;
+    let dist_eye_canvas = 0.75;
+    let mut canvas_points = Vec::new();
     let eyepoint = (dist*(dec*pi/180.).cos()*(az*pi/180.).cos(),
                     dist*(dec*pi/180.).cos()*(az*pi/180.).sin(),
                     dist*(dec*pi/180.).sin());
     let to_origo = mult_scalar(-1., eyepoint);
     println!("Eye point at {} {}  {}", eyepoint.0, eyepoint.1, eyepoint.2);
     let canvas_x_axis = norm_vec((-eyepoint.1, eyepoint.0, 0.));
-    let canvas_y_axis = crossp(canvas_x, norm_vec(to_origo));
-    let canvas_origo = add_vec(add_vec(mult_scalar((1. - dist_eye_canvas), eyepoint),
-                                       mult_scalar(-0.5*len_vec(eyepoint), canvas_x)),
-                                       mult_scalar(-0.5*len_vec(eyepoint), canvas_y));
+    let canvas_y_axis = crossp(canvas_x_axis, norm_vec(to_origo));
+    let canvas_origo = add_vec(add_vec(mult_scalar(1. - dist_eye_canvas, eyepoint),
+                                       mult_scalar(-0.35*len_vec(eyepoint), canvas_x_axis)),
+                                       mult_scalar(-0.35*len_vec(eyepoint), canvas_y_axis));
+    let value = mult_scalar(1. - dist_eye_canvas, eyepoint);
+    println!("canvas dist {}  {} {}", value.0, value.1, value.2);
+    let value = mult_scalar(-0.5*len_vec(eyepoint), canvas_x_axis);
+    println!("canvas_x_axis {}  {} {}", value.0, value.1, value.2);
+    let value = mult_scalar(-0.5*len_vec(eyepoint), canvas_y_axis);
+    println!("canvas_y_axis {}  {} {}", value.0, value.1, value.2);
+    println!("Canvas origo {} {} {}", canvas_origo.0, canvas_origo.1, canvas_origo.2);
 
     for n in 0..(l_a_points.len()) {
-        point = l_a_points[n];
-        eye_to_point = ab_vec(eyepoint, point);
-        let canvas_x = distace(point, eye_to_point, canvas_origo, canvas_x_axis);
-        let canvas_y = distace(point, eye_to_point, canvas_origo, canvas_y_axis);
-
+        let point = l_a_points[n];
+        let eye_to_point = ab_vec(eyepoint, point);
+        let canvas_x = distance(point, eye_to_point, canvas_origo, canvas_x_axis);
+        let canvas_y = distance(point, eye_to_point, canvas_origo, canvas_y_axis);
+        // println!("{} {} point {} {} {}", canvas_x, canvas_y, point.0, point.1, point.2);
+        canvas_points.push((canvas_x as f64, canvas_y as f64));
     }
-    println!("Canvas origo {} {} {}", canvas_origo.0, canvas_origo.1, canvas_origo.2);
-    l_a_points
+    canvas_points
 }
 
-fn distace(point1: (f64, f64, f64), vec1: (f64, f64, f64), point2: (f64, f64, f64), vec2: (f64, f64, f64)) -> (f64, f64, f64) {
+fn coor_to_pixels(canvas_points: Vec<(f64, f64)>, pic_size: (usize, usize)) -> Vec<u8> {
+    // Project points on the xy-plane
+    let mut pixels = vec![255; pic_size.0 * pic_size.1];  // Initialize the array holding the pixels. 255 is black 0 i white
+    let x_min = 0.;
+    let x_max = 30.;
+    let y_min = 10.;
+    let y_max = 60.;
+    println!("x_min {} x_max {} y_min {} y_max {}", x_min, x_max, y_min, y_max);
+    let pic_x = pic_size.0 as f64;
+    let pic_y = pic_size.1 as f64;
+    for n in 0..(canvas_points.len()) {
+        let x = canvas_points[n].0;
+        let y = canvas_points[n].1;
+
+        let x_norm = (x - x_min)/(x_max - x_min);  // Move coordinates into first quadrant
+        let y_norm = 1. - (y - y_min)/(y_max - y_min);
+        let mut position = 1;
+        if x_norm < 1. {
+            position = (x_norm * pic_x + ((y_norm * pic_y) - ((y_norm * pic_y) % 1.)) * pic_y) as u32; // Translate coordinate to pixel position
+        }
+        // println!("x {} y {} z {} pos {}", x, y, z, position);
+        if position > 0 && position < 250000 {
+            pixels[position as usize] = 0;
+        }
+    }
+    pixels
+}
+
+fn write_image(filename: &str, pixels: &[u8], bounds: (usize, usize)) -> Result<(), std::io::Error> {
+    let output = File::create(filename)?;
+    let encoder = PNGEncoder::new(output);
+    encoder.encode(&pixels, bounds.0 as u32, bounds.1 as u32, ColorType::Gray(8))?;
+    Ok(())
+}
+
+fn distance(point1: (f64, f64, f64), vec1: (f64, f64, f64), point2: (f64, f64, f64), vec2: (f64, f64, f64)) -> f64 {
     // Return the distance between the line defined by point1 and vec1 and the line defined by point2 and vec2
     let n_vec = crossp(vec1, vec2);
-    let distace = dotp(n_vec, ab_vec(point1, point2))/len_vec(n_vec);
-    distace
+    let distance = dotp(n_vec, ab_vec(point1, point2)).abs()/len_vec(n_vec);
+    distance
 }
 
 
@@ -131,34 +194,44 @@ fn norm_vec(vec: (f64, f64, f64)) -> (f64, f64, f64) {
     vec_res
 }
 
-fn coor_to_pixels(l_a_points: Vec<(f64, f64, f64)>, number_of_points: usize, pic_size: (usize, usize)) -> Vec<u8> {
-    // Project points on the xy-plane
-    let mut pixels = vec![255; pic_size.0 * pic_size.1];  // Initialize the array holding the pixels. 255 is black 0 i white
-    let x_min = -20.;
-    let x_max = 20.;
-    let y_min = -25.;
-    let y_max = 25.;
-    let pic_x = pic_size.0 as f64;
-    let pic_y = pic_size.1 as f64;
-    for n in 0..(number_of_points) {
-        let x = l_a_points[n].0;
-        let y = l_a_points[n].1;
-        let z = l_a_points[n].2;
-        let x_norm = (x - x_min)/(x_max - x_min);  // Move coordinates into first quadrant
-        let y_norm = 1. - (y - y_min)/(y_max - y_min);
-        let position = (x_norm * pic_x + ((y_norm * pic_y) - ((y_norm * pic_y) % 1.)) * pic_y) as u32; // Translate coordinate to pixel position
-        // let position = (x/10. * 500. + (((1. - y/10.) * 500.) - (((1. - y/10.) * 500.) % 1.)) * 500.) as u32;
-        // println!("x {} y {} z {} pos {}", x, y, z, position);
-        if position > 0 && position < 250000 {
-            pixels[position as usize] = 0;
-        }
-    }
-    pixels
+#[test]
+fn test_distance() {
+    assert_eq!(distance((2., 5., 3.), (7., 2., 3.), (7., 2., 3.), (8., 5., 1.)), 116.0_f64/819.0_f64.sqrt());
 }
 
-fn write_image(filename: &str, pixels: &[u8], bounds: (usize, usize)) -> Result<(), std::io::Error> {
-    let output = File::create(filename)?;
-    let encoder = PNGEncoder::new(output);
-    encoder.encode(&pixels, bounds.0 as u32, bounds.1 as u32, ColorType::Gray(8))?;
-    Ok(())
+#[test]
+fn test_crossp() {
+    assert_eq!(crossp((8., 5., 1.), (7., 2., 3.)), (13., -17., -19.));
+}
+
+#[test]
+fn test_dotp() {
+    assert_eq!(dotp((8., 5., 1.), (7., 2., 3.)), 69.);
+}
+
+#[test]
+fn test_add_vec() {
+    assert_eq!(add_vec((8., 5., 1.), (7., 2., 3.)), (15., 7., 4.));
+}
+
+#[test]
+fn test_ab_vec() {
+    assert_eq!(ab_vec((8., 5., 1.), (7., 2., 3.)),  (-1., -3., 2.));
+}
+
+#[test]
+fn test_mult_scalar() {
+    assert_eq!(mult_scalar(2.0, (1., 1., 1.)), (2., 2., 2.));
+    }
+
+#[test]
+fn test_len_vec() {
+    assert_eq!(len_vec((-1./6.0_f64.sqrt(), 1./6.0_f64.sqrt(), -2./6.0_f64.sqrt())), 1.0);
+    assert_eq!(len_vec((-1., 1., -2.)), 6.0_f64.sqrt());
+}
+
+#[test]
+fn test_norm_vec() {
+    assert_eq!(norm_vec((1., 0., 0.)), (1., 0., 0.));
+    assert_eq!(norm_vec((-1., 1., -2.)), (-1./6.0_f64.sqrt(), 1./6.0_f64.sqrt(), -2./6.0_f64.sqrt()));
 }
