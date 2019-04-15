@@ -15,48 +15,63 @@ fn main() {
         writeln!(std::io::stderr(), "Example: {} lorenz.png 28 10 2.667", args[0]).unwrap();
         std::process::exit(1);
     }
-    let rho  = &args[2].parse().unwrap();
-    let sigma = &args[3].parse().unwrap();
-    let beta = &args[4].parse().unwrap();
+    let rho  = 28.; // &args[2].parse().unwrap();
+    let sigma = 10.; // &args[3].parse().unwrap();
+    let beta = 2.667; // &args[4].parse().unwrap();
     let pic_size = (500 as usize, 500 as usize);
     let number_of_points = 50000 as usize; // Number of points being calculated
     println!("You are using rho = {}, sigma = {} and beta = {} ", rho, sigma, beta);
     // let l_a_points = lorenz(*rho, *sigma, *beta, number_of_points);
+    let names = ["pic1.png", "pic2.png", "pic3.png", "pic4.png", "pic5.png", "pic6.png", "pic7.png", "pic8.png", "pic9.png", "pic10.png",
+                "pic11.png", "pic12.png", "pic13.png", "pic14.png", "pic15.png", "pic16.png", "pic17.png", "pic18.png", "pic19.png", "pic20.png",
+                "pic21.png", "pic22.png", "pic23.png", "pic24.png", "pic25.png", "pic26.png", "pic27.png", "pic28.png", "pic29.png", "pic30.png",
+                "pic31.png", "pic32.png", "pic33.png", "pic34.png", "pic35.png", "pic36.png", "pic37.png", "pic38.png", "pic39.png", "pic40.png",
+                "pic41.png", "pic42.png", "pic43.png", "pic44.png", "pic45.png", "pic46.png", "pic47.png", "pic48.png", "pic49.png", "pic50.png",
+                "pic51.png", "pic52.png", "pic53.png", "pic54.png", "pic55.png", "pic56.png", "pic57.png", "pic58.png", "pic59.png", "pic60.png",
+                "pic61.png", "pic62.png", "pic63.png", "pic64.png", "pic65.png", "pic66.png", "pic67.png", "pic68.png", "pic69.png", "pic70.png",
+                "pic71.png", "pic72.png", "pic73.png", "pic74.png", "pic75.png", "pic76.png", "pic77.png", "pic78.png", "pic79.png", "pic80.png"];
 
     // Camera settings
-    let az = 10.; // Azimut: angle from x-axis arround z-axis -180 to 180
-    let dec = 0.; // Declination: angle determining heigth above xy-plane -90 to 90
-    let dist = 100.; // Distance of camera from (0, 0, 0)
-    
-    let l_a_points = lorenz(*rho, *sigma, *beta, number_of_points);
+    let az = &args[4].parse().unwrap(); // Azimut: angle from x-axis arround z-axis -180 to 180
+    let dec = &args[3].parse().unwrap(); // Declination: angle determining heigth above xy-plane -90 to 90
+    let dist = &args[2].parse().unwrap(); // Distance of camera from (0, 0, 0)
+
+    // let l_a_points = lorenz(rho, sigma, beta, number_of_points);
     // let mut l_a_points = Vec::new();
     // let l_a_points = test_picture(*rho, *sigma, *beta, l_a_points);
+    let mut bzz = *az;
+    bzz -= 5.;
+    for n in 0..12 {
+        bzz += 5.;
+        println!("Az {} {}", &names[n], bzz);
+        let l_a_points = lorenz(rho, sigma, beta, number_of_points);
+        let canvas_points = camera(l_a_points, bzz, *dec, *dist);
 
-    let canvas_points = camera(l_a_points, az, dec, dist);
+        let pixels = coor_to_pixels(canvas_points, pic_size);
 
-    let pixels = coor_to_pixels(canvas_points, pic_size);
-
-    write_image(&args[1], &pixels, pic_size).expect("Error writing PNG file");
+        write_image(&names[n], &pixels, pic_size).expect("Error writing PNG file");
+    }
+    // write_image(&args[1], &pixels, pic_size).expect("Error writing PNG file");
 }
 
-fn test_picture(rho: f64, sigma: f64, beta: f64, mut l_a_points: Vec<(f64, f64, f64)>) -> Vec<(f64, f64, f64)> {
-    // let mut l_a_points = Vec::new();
-    l_a_points.push((rho, sigma, beta));
-    // for x in (-20..21).step_by(10) {
-        // for y in (-20..21).step_by(10) {
-        //     for z in (-20..21).step_by(10) {
-                // l_a_points.push((x as f64, y as f64, z as f64));
-                let mut t: f64 = 0.;
-                for _n in 0..2500 {
-                    t += 0.017;
-                    let y = t*t.cos();
-                    let z = t*t.sin();
-                l_a_points.push((0., y as f64, z as f64));
-            }
-        // }
-    // }
-    l_a_points
-}
+// fn test_picture(rho: f64, sigma: f64, beta: f64, mut l_a_points: Vec<(f64, f64, f64)>) -> Vec<(f64, f64, f64)> {
+//     // let mut l_a_points = Vec::new();
+//     l_a_points.push((rho, sigma, beta));
+//     // for x in (-20..21).step_by(10) {
+//         // for y in (-20..21).step_by(10) {
+//         //     for z in (-20..21).step_by(10) {
+//                 // l_a_points.push((x as f64, y as f64, z as f64));
+//                 let mut t: f64 = 0.;
+//                 for _n in 0..2500 {
+//                     t += 0.017;
+//                     let y = t*t.cos();
+//                     let z = t*t.sin();
+//                 l_a_points.push((0., y as f64, z as f64));
+//             }
+//         // }
+//     // }
+//     l_a_points
+// }
 
 fn lorenz(rho: f64, sigma: f64, beta: f64, number_of_points: usize) -> Vec<(f64, f64, f64)>{
     println!("{} {} {}", rho, sigma, beta);
@@ -64,7 +79,7 @@ fn lorenz(rho: f64, sigma: f64, beta: f64, number_of_points: usize) -> Vec<(f64,
     let mut x0 = 1.0;
     let mut y0 = 1.0;
     let mut z0 = 1.0;
-    let t = 0.01;
+    let t = 0.0001;
     for _ in 0..number_of_points {
         let x = x0 + sigma * (y0 - x0) * t;
         let y = y0 + (x0 * (rho - z0) - y0) * t;
