@@ -12,10 +12,10 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() != 5 {
         writeln!(std::io::stderr(), "Usage: lorenz FILE rho sigma beta").unwrap();
-        writeln!(std::io::stderr(), "Example: {} lorenz.png 28 10 2.667", args[0]).unwrap();
+        writeln!(std::io::stderr(), "Example: cargo run lorenz.png 0. 0. 0.").unwrap();
         std::process::exit(1);
     }
-    let rho  = 28.; // &args[2].parse().unwrap();
+    let rho  = 28.; // &args[2].parse().unwrap();  // Parameters for the lorenz attractor
     let sigma = 10.; // &args[3].parse().unwrap();
     let beta = 2.667; // &args[4].parse().unwrap();
     let pic_size = (500 as usize, 500 as usize);
@@ -32,54 +32,29 @@ fn main() {
                 "pic71.png", "pic72.png", "pic73.png", "pic74.png", "pic75.png", "pic76.png", "pic77.png", "pic78.png", "pic79.png", "pic80.png"];
 
     // Camera settings
-    let az = &args[4].parse().unwrap(); // Azimut: angle from x-axis arround z-axis -180 to 180
-    let dec = &args[3].parse().unwrap(); // Declination: angle determining heigth above xy-plane -90 to 90
-    let dist = &args[2].parse().unwrap(); // Distance of camera from (0, 0, 0)
+    let mut az = 0.; // Azimut: angle from x-axis arround z-axis -180 to 180
+    let mut dec = 0.; // Declination: angle determining heigth above xy-plane -90 to 90
+    let dist = 100.; // Distance of camera from (0, 0, 0)
+    let offset = (*&args[2].parse().unwrap(), *&args[3].parse().unwrap(), *&args[4].parse().unwrap()); // Center of scene: Point (0,0,0) is translated to
 
-    // let l_a_points = lorenz(rho, sigma, beta, number_of_points);
-    // let mut l_a_points = Vec::new();
-    // let l_a_points = test_picture(*rho, *sigma, *beta, l_a_points);
-    let mut bzz = *az;
-    bzz -= 5.;
-    for n in 0..12 {
-        bzz += 5.;
-        println!("Az {} {}", &names[n], bzz);
-        let l_a_points = lorenz(rho, sigma, beta, number_of_points);
-        let canvas_points = camera(l_a_points, bzz, *dec, *dist);
-
+    let l_a_points = lorenz(rho, sigma, beta, number_of_points); // Generate set of points in Lorenz attractor
+    for n in 0..6 {  // Rotate camera arround the set
+        az += 5.;
+        let canvas_points = camera(&l_a_points, az, dec, dist, offset);
         let pixels = coor_to_pixels(canvas_points, pic_size);
-
         write_image(&names[n], &pixels, pic_size).expect("Error writing PNG file");
     }
     // write_image(&args[1], &pixels, pic_size).expect("Error writing PNG file");
 }
 
-// fn test_picture(rho: f64, sigma: f64, beta: f64, mut l_a_points: Vec<(f64, f64, f64)>) -> Vec<(f64, f64, f64)> {
-//     // let mut l_a_points = Vec::new();
-//     l_a_points.push((rho, sigma, beta));
-//     // for x in (-20..21).step_by(10) {
-//         // for y in (-20..21).step_by(10) {
-//         //     for z in (-20..21).step_by(10) {
-//                 // l_a_points.push((x as f64, y as f64, z as f64));
-//                 let mut t: f64 = 0.;
-//                 for _n in 0..2500 {
-//                     t += 0.017;
-//                     let y = t*t.cos();
-//                     let z = t*t.sin();
-//                 l_a_points.push((0., y as f64, z as f64));
-//             }
-//         // }
-//     // }
-//     l_a_points
-// }
-
 fn lorenz(rho: f64, sigma: f64, beta: f64, number_of_points: usize) -> Vec<(f64, f64, f64)>{
+    // Generate points in the Lorenz attractor
     println!("{} {} {}", rho, sigma, beta);
     let mut l_a_points = Vec::new();
     let mut x0 = 1.0;
     let mut y0 = 1.0;
     let mut z0 = 1.0;
-    let t = 0.0001;
+    let t = 0.001;
     for _ in 0..number_of_points {
         let x = x0 + sigma * (y0 - x0) * t;
         let y = y0 + (x0 * (rho - z0) - y0) * t;
@@ -94,20 +69,21 @@ fn lorenz(rho: f64, sigma: f64, beta: f64, number_of_points: usize) -> Vec<(f64,
     l_a_points
 }
 
-fn camera(l_a_points: Vec<(f64, f64, f64)>, az: f64, dec: f64, dist: f64) -> std::vec::Vec<(f64, f64)> {
+fn camera(l_a_points: &Vec<(f64, f64, f64)>, az: f64, dec: f64, dist: f64, offset: (f64, f64, f64)) -> std::vec::Vec<(f64, f64)> {
     let pi = 3.1415926536;
     let dist_eye_canvas = 0.75;
     let mut canvas_points = Vec::new();
-    let eyepoint = (dist*(dec*pi/180.).cos()*(az*pi/180.).cos(),
-                    dist*(dec*pi/180.).cos()*(az*pi/180.).sin(),
-                    dist*(dec*pi/180.).sin());
+    let eyepoint = (dist*(dec*pi/180.).cos()*(az*pi/180.).cos() + offset.0,
+                    dist*(dec*pi/180.).cos()*(az*pi/180.).sin() + offset.1,
+                    dist*(dec*pi/180.).sin() + offset.2);
     let to_origo = mult_scalar(-1., eyepoint);
     println!("Eye point at {} {}  {}", eyepoint.0, eyepoint.1, eyepoint.2);
     let canvas_x_axis = norm_vec((-eyepoint.1, eyepoint.0, 0.));
     let canvas_y_axis = crossp(canvas_x_axis, norm_vec(to_origo));
-    let canvas_origo = add_vec(add_vec(mult_scalar(1. - dist_eye_canvas, eyepoint),
+    let canvas_origo = add_vec(add_vec(add_vec(mult_scalar(1. - dist_eye_canvas, eyepoint),
                                        mult_scalar(-0.35*len_vec(eyepoint), canvas_x_axis)),
-                                       mult_scalar(-0.35*len_vec(eyepoint), canvas_y_axis));
+                                       mult_scalar(-0.35*len_vec(eyepoint), canvas_y_axis)),
+                                       offset);
     let value = mult_scalar(1. - dist_eye_canvas, eyepoint);
     println!("canvas dist {}  {} {}", value.0, value.1, value.2);
     let value = mult_scalar(-0.5*len_vec(eyepoint), canvas_x_axis);
