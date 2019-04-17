@@ -37,18 +37,22 @@ fn main() {
     let dist = 100.; // Distance of camera from (0, 0, 0)
     let offset = (*&args[2].parse().unwrap(), *&args[3].parse().unwrap(), *&args[4].parse().unwrap()); // Center of scene: Point (0,0,0) is translated to
 
-    let l_a_points = lorenz(rho, sigma, beta, number_of_points); // Generate set of points in Lorenz attractor
-    for n in 0..6 {  // Rotate camera arround the set
+    // let point_set = lorenz(number_of_points); // Generate set of points in Lorenz attractor
+    let point_set = rossler(number_of_points); // Generate set of points in Rössler attractor
+    for n in 0..36 {  // Rotate camera arround the set
         az += 5.;
-        let canvas_points = camera(&l_a_points, az, dec, dist, offset);
+        let canvas_points = camera(&point_set, az, dec, dist, offset);
         let pixels = coor_to_pixels(canvas_points, pic_size);
         write_image(&names[n], &pixels, pic_size).expect("Error writing PNG file");
     }
     // write_image(&args[1], &pixels, pic_size).expect("Error writing PNG file");
 }
 
-fn lorenz(rho: f64, sigma: f64, beta: f64, number_of_points: usize) -> Vec<(f64, f64, f64)>{
+fn lorenz(number_of_points: usize) -> Vec<(f64, f64, f64)>{
     // Generate points in the Lorenz attractor
+    let rho  = 28.;
+    let sigma = 10.;
+    let beta = 2.667;
     println!("{} {} {}", rho, sigma, beta);
     let mut l_a_points = Vec::new();
     let mut x0 = 1.0;
@@ -67,6 +71,31 @@ fn lorenz(rho: f64, sigma: f64, beta: f64, number_of_points: usize) -> Vec<(f64,
         z0 = z;
     }
     l_a_points
+}
+
+fn rossler(number_of_points: usize) -> Vec<(f64, f64, f64)>{
+    // Generate points in the Rössler attractor
+    let a = 0.2;
+    let b = 0.2;
+    let c = 5.7;
+    println!("{} {} {}", a, b, c);
+    let mut ros_points = Vec::new();
+    let mut x0 = 1.0;
+    let mut y0 = 1.0;
+    let mut z0 = 1.0;
+    let t = 0.01;
+    for _ in 0..number_of_points {
+        let x = x0 + (-y0 - z0) * t;
+        let y = y0 + (x0 + a*y0) * t;
+        let z = z0 + (b + z0*(x0 - c)) * t;
+        // println!("x{} y{} z{}", x, y, z);
+        ros_points.push((x as f64, y as f64, -z as f64));
+
+        x0 = x;
+        y0 = y;
+        z0 = z;
+    }
+    ros_points
 }
 
 fn camera(l_a_points: &Vec<(f64, f64, f64)>, az: f64, dec: f64, dist: f64, offset: (f64, f64, f64)) -> std::vec::Vec<(f64, f64)> {
